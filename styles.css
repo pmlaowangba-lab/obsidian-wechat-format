@@ -1,0 +1,13 @@
+/* WeChat Format Plugin - Obsidian UI Styles */
+
+.wechat-format-settings .setting-item {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 12px 0;
+}
+
+.wechat-format-settings textarea {
+  width: 100%;
+  min-height: 100px;
+  font-family: var(--font-monospace);
+  font-size: 13px;
+}
