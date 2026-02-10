@@ -3,7 +3,7 @@
     "name": "WeChat Format",
     "version": "1.0.0",
     "minAppVersion": "0.15.0",
-    "description": "将 Markdown 文档一键复制为微信公众号格式，保留文字和图片",
+    "description": "Copy Markdown to WeChat Official Account format with one click. 一键将 Markdown 转换为微信公众号格式。",
     "author": "Laowang",
     "isDesktopOnly": true
 }
