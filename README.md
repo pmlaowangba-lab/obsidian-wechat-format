@@ -2,7 +2,7 @@
 
 Obsidian 插件：一键将 Markdown 文档转为微信公众号格式。
 
-![Obsidian WeChat Format](https://github.com/your-username/obsidian-wechat-format/raw/main/images/preview.png)
+![Obsidian WeChat Format](https://github.com/pmlaowangba-lab/obsidian-wechat-format/raw/main/images/preview.png)
 
 ## 功能特点
 
