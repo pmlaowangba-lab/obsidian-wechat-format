@@ -53837,6 +53837,17 @@ var import_lib = __toESM(require_lib(), 1);
 var es_default = import_lib.default;
 
 // src/converter.ts
+function normalizeMarkdownImageDestination(path) {
+  const trimmedPath = path.trim();
+  if (!trimmedPath) return trimmedPath;
+  if (trimmedPath.startsWith("<") && trimmedPath.endsWith(">")) {
+    return trimmedPath;
+  }
+  if (/\s/.test(trimmedPath)) {
+    return `<${trimmedPath}>`;
+  }
+  return trimmedPath;
+}
 function preprocessObsidian(markdown) {
   let content = markdown;
   const footnotes = [];
@@ -53845,10 +53856,11 @@ function preprocessObsidian(markdown) {
   content = content.replace(/!\[\[([^\]]+?)\]\]/g, (_match, path) => {
     const parts = path.split("|");
     const imagePath = parts[0].trim();
+    const normalizedImagePath = normalizeMarkdownImageDestination(imagePath);
     if (parts.length > 1 && /^\d+$/.test(parts[1].trim())) {
-      return `![${imagePath}](${imagePath})`;
+      return `![${imagePath}](${normalizedImagePath})`;
     }
-    return `![${imagePath}](${imagePath})`;
+    return `![${imagePath}](${normalizedImagePath})`;
   });
   content = content.replace(
     /\[\[([^\]|]+?)(?:\|([^\]]+?))?\]\]/g,
@@ -54305,51 +54317,68 @@ function generatePreviewHtml(articleHtml, title) {
       const content = document.getElementById('articleContent');
       const btn = document.getElementById('copyBtn');
       const btn2 = document.getElementById('copyBtn2');
-      
+
       try {
-        // \u4F7F\u7528 ClipboardItem API \u5199\u5165 text/html
-        const htmlContent = content.innerHTML;
-        const blob = new Blob([htmlContent], { type: 'text/html' });
-        const textBlob = new Blob([content.innerText], { type: 'text/plain' });
-        
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            'text/html': blob,
-            'text/plain': textBlob
-          })
-        ]);
-        
-        // \u6210\u529F\u53CD\u9988
-        btn.innerHTML = '\u2705 \u590D\u5236\u6210\u529F\uFF01';
-        btn.classList.add('success');
-        btn2.innerHTML = '\u2705 \u590D\u5236\u6210\u529F\uFF01';
-        btn2.classList.add('success');
-        showToast('\u590D\u5236\u6210\u529F\uFF01\u76F4\u63A5\u7C98\u8D34\u5230\u516C\u4F17\u53F7\u7F16\u8F91\u5668\u5373\u53EF \u{1F389}');
-        
-        setTimeout(() => {
-          btn.innerHTML = '\u{1F3AF} \u4E00\u952E\u590D\u5236\u5230\u516C\u4F17\u53F7';
-          btn.classList.remove('success');
-          btn2.innerHTML = '\u{1F3AF} \u4E00\u952E\u590D\u5236\u5230\u516C\u4F17\u53F7';
-          btn2.classList.remove('success');
-        }, 3000);
-        
-      } catch (err) {
-        // \u964D\u7EA7\u65B9\u6848\uFF1A\u4F7F\u7528 execCommand
-        try {
-          const range = document.createRange();
-          range.selectNodeContents(content);
-          const selection = window.getSelection();
-          selection.removeAllRanges();
-          selection.addRange(range);
-          document.execCommand('copy');
-          selection.removeAllRanges();
-          
+        // \u65B9\u6CD51: \u4F7F\u7528 contenteditable \u5143\u7D20\u590D\u5236\uFF08\u6700\u53EF\u9760\uFF0C\u6D4F\u89C8\u5668\u4F1A\u81EA\u52A8\u5904\u7406\u56FE\u7247\uFF09
+        const tempDiv = document.createElement('div');
+        tempDiv.contentEditable = 'true';
+        tempDiv.style.position = 'fixed';
+        tempDiv.style.left = '-9999px';
+        tempDiv.innerHTML = content.innerHTML;
+        document.body.appendChild(tempDiv);
+
+        // \u9009\u62E9\u5185\u5BB9
+        const range = document.createRange();
+        range.selectNodeContents(tempDiv);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // \u6267\u884C\u590D\u5236
+        const success = document.execCommand('copy');
+
+        // \u6E05\u7406
+        selection.removeAllRanges();
+        document.body.removeChild(tempDiv);
+
+        if (success) {
           btn.innerHTML = '\u2705 \u590D\u5236\u6210\u529F\uFF01';
           btn.classList.add('success');
           btn2.innerHTML = '\u2705 \u590D\u5236\u6210\u529F\uFF01';
           btn2.classList.add('success');
           showToast('\u590D\u5236\u6210\u529F\uFF01\u76F4\u63A5\u7C98\u8D34\u5230\u516C\u4F17\u53F7\u7F16\u8F91\u5668\u5373\u53EF \u{1F389}');
-          
+
+          setTimeout(() => {
+            btn.innerHTML = '\u{1F3AF} \u4E00\u952E\u590D\u5236\u5230\u516C\u4F17\u53F7';
+            btn.classList.remove('success');
+            btn2.innerHTML = '\u{1F3AF} \u4E00\u952E\u590D\u5236\u5230\u516C\u4F17\u53F7';
+            btn2.classList.remove('success');
+          }, 3000);
+        } else {
+          throw new Error('execCommand failed');
+        }
+
+      } catch (err) {
+        console.error('\u590D\u5236\u5931\u8D25:', err);
+        // \u964D\u7EA7\u65B9\u6848\uFF1A\u4F7F\u7528 ClipboardItem API
+        try {
+          const htmlContent = content.innerHTML;
+          const blob = new Blob([htmlContent], { type: 'text/html' });
+          const textBlob = new Blob([content.innerText], { type: 'text/plain' });
+
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': blob,
+              'text/plain': textBlob
+            })
+          ]);
+
+          btn.innerHTML = '\u2705 \u590D\u5236\u6210\u529F\uFF01';
+          btn.classList.add('success');
+          btn2.innerHTML = '\u2705 \u590D\u5236\u6210\u529F\uFF01';
+          btn2.classList.add('success');
+          showToast('\u590D\u5236\u6210\u529F\uFF01\u76F4\u63A5\u7C98\u8D34\u5230\u516C\u4F17\u53F7\u7F16\u8F91\u5668\u5373\u53EF \u{1F389}');
+
           setTimeout(() => {
             btn.innerHTML = '\u{1F3AF} \u4E00\u952E\u590D\u5236\u5230\u516C\u4F17\u53F7';
             btn.classList.remove('success');
@@ -54357,6 +54386,7 @@ function generatePreviewHtml(articleHtml, title) {
             btn2.classList.remove('success');
           }, 3000);
         } catch (e) {
+          console.error('\u964D\u7EA7\u65B9\u6848\u4E5F\u5931\u8D25:', e);
           showToast('\u590D\u5236\u5931\u8D25\uFF0C\u8BF7\u624B\u52A8\u9009\u62E9\u5185\u5BB9\u590D\u5236');
         }
       }

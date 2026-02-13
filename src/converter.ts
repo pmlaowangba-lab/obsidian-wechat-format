@@ -7,6 +7,27 @@ import hljs from "highlight.js";
 import { WechatTheme } from "./themes";
 
 /**
+ * 规范化 Markdown 图片目标路径：
+ * 含空格等特殊字符时用尖括号包裹，确保 marked 能正确识别为图片链接。
+ */
+function normalizeMarkdownImageDestination(path: string): string {
+    const trimmedPath = path.trim();
+    if (!trimmedPath) return trimmedPath;
+
+    // 已是 <...> 形式时保持原样
+    if (trimmedPath.startsWith("<") && trimmedPath.endsWith(">")) {
+        return trimmedPath;
+    }
+
+    // 对包含空白字符的本地路径使用 <...> 包裹
+    if (/\s/.test(trimmedPath)) {
+        return `<${trimmedPath}>`;
+    }
+
+    return trimmedPath;
+}
+
+/**
  * 预处理 Obsidian 特殊语法
  */
 export function preprocessObsidian(markdown: string): {
@@ -26,10 +47,11 @@ export function preprocessObsidian(markdown: string): {
         // 处理尺寸: ![[image.png|300]]
         const parts = path.split("|");
         const imagePath = parts[0].trim();
+        const normalizedImagePath = normalizeMarkdownImageDestination(imagePath);
         if (parts.length > 1 && /^\d+$/.test(parts[1].trim())) {
-            return `![${imagePath}](${imagePath})`;
+            return `![${imagePath}](${normalizedImagePath})`;
         }
-        return `![${imagePath}](${imagePath})`;
+        return `![${imagePath}](${normalizedImagePath})`;
     });
 
     // 处理 Wikilinks: [[link|display]] → display, [[link]] → link
