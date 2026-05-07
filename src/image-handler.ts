@@ -17,7 +17,7 @@ const MIME_TYPES: Record<string, string> = {
 /**
  * 获取图片的 MIME 类型
  */
-function getMimeType(filePath: string): string {
+export function getMimeTypeForPath(filePath: string): string {
     const ext = filePath.split(".").pop()?.toLowerCase() || "";
     return MIME_TYPES[ext] || "image/png";
 }
@@ -32,7 +32,7 @@ export function isRemoteUrl(src: string): boolean {
 /**
  * 解析 Obsidian 中的图片路径（支持相对路径和 vault 路径）
  */
-function resolveImagePath(
+export function resolveImagePath(
     app: App,
     imageSrc: string,
     currentFilePath: string
@@ -71,6 +71,7 @@ function resolveImagePath(
 
 /**
  * 将本地图片转为 base64 Data URI
+ * SVG 会自动转为 PNG（微信公众号不支持 SVG）
  */
 export async function imageToBase64(
     app: App,
@@ -81,7 +82,9 @@ export async function imageToBase64(
         return imageSrc; // 网络图片保持原URL
     }
 
-    const file = resolveImagePath(app, imageSrc, currentFilePath);
+    // 解码 URL 编码的路径（空格等）
+    const decodedSrc = decodeURIComponent(imageSrc);
+    const file = resolveImagePath(app, decodedSrc, currentFilePath);
     if (!file) {
         console.warn(`[WeChat Format] 找不到图片: ${imageSrc}`);
         return null;
@@ -95,7 +98,17 @@ export async function imageToBase64(
             binary += String.fromCharCode(uint8Array[i]);
         }
         const base64 = btoa(binary);
-        const mimeType = getMimeType(file.path);
+        const mimeType = getMimeTypeForPath(file.path);
+
+        // SVG → PNG 转换（微信公众号不支持 SVG）
+        if (file.extension.toLowerCase() === "svg") {
+            try {
+                const pngBase64 = await svgToPng(`data:image/svg+xml;base64,${base64}`);
+                if (pngBase64) return pngBase64;
+            } catch (e) {
+                console.warn(`[WeChat Format] SVG→PNG 转换失败，使用原始 SVG: ${file.path}`, e);
+            }
+        }
 
         // 检查大小（约 10MB 限制）
         if (arrayBuffer.byteLength > 10 * 1024 * 1024) {
@@ -109,6 +122,137 @@ export async function imageToBase64(
         console.error(`[WeChat Format] 读取图片失败: ${file.path}`, error);
         return null;
     }
+}
+
+/**
+ * 将 SVG data URI 转为 PNG data URI（通过 Canvas）
+ */
+function svgToPng(svgDataUri: string, maxWidth = 800): Promise<string | null> {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+            const w = Math.round(img.width * scale);
+            const h = Math.round(img.height * scale);
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) { resolve(null); return; }
+            // 白色背景（SVG 可能是透明的）
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = () => {
+            console.warn("[WeChat Format] SVG 加载失败");
+            resolve(null);
+        };
+        img.src = svgDataUri;
+    });
+}
+
+/**
+ * 通过 canvas 把任意支持格式（png/jpg/webp/gif/bmp）的图片
+ * 重新编码为微信可接受的 JPEG，并保证体积 ≤ maxBytes。
+ * 处理逻辑：先按 maxWidth 缩放，再尝试 quality 0.85→0.7→0.55→0.4，
+ * 仍超限则继续按 0.8 倍下采样直到通过或低于安全阈值。
+ *
+ * 返回：{ buffer, filename, mimeType } 或 null（无法解码时）
+ */
+export async function compressImageToFit(
+    sourceData: ArrayBuffer,
+    sourceMimeType: string,
+    sourceFilename: string,
+    maxBytes = 1024 * 1024,
+    maxWidth = 1440
+): Promise<{ buffer: ArrayBuffer; filename: string; mimeType: string } | null> {
+    return new Promise((resolve) => {
+        const blob = new Blob([sourceData], { type: sourceMimeType || "image/png" });
+        const objectUrl = URL.createObjectURL(blob);
+        const img = new Image();
+
+        img.onload = async () => {
+            try {
+                let scale = img.width > maxWidth ? maxWidth / img.width : 1;
+                const tryEncode = async (currentScale: number): Promise<{ buffer: ArrayBuffer; mimeType: string } | null> => {
+                    const w = Math.max(1, Math.round(img.width * currentScale));
+                    const h = Math.max(1, Math.round(img.height * currentScale));
+                    const canvas = document.createElement("canvas");
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) return null;
+                    // JPEG 不支持透明，铺白底，避免 PNG/GIF 透明区域变黑
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, 0, w, h);
+                    ctx.drawImage(img, 0, 0, w, h);
+
+                    for (const quality of [0.85, 0.7, 0.55, 0.4]) {
+                        const result = await canvasToBlobBuffer(canvas, "image/jpeg", quality);
+                        if (result && result.byteLength <= maxBytes) {
+                            return { buffer: result, mimeType: "image/jpeg" };
+                        }
+                    }
+                    return null;
+                };
+
+                let result = await tryEncode(scale);
+                // 如果 0.4 质量都过不了限制，按 0.8 倍继续下采样
+                while (!result && scale > 0.2) {
+                    scale *= 0.8;
+                    result = await tryEncode(scale);
+                }
+
+                URL.revokeObjectURL(objectUrl);
+                if (!result) {
+                    resolve(null);
+                    return;
+                }
+
+                const baseName = sourceFilename.replace(/\.[^.]+$/, "") || `image_${Date.now()}`;
+                resolve({
+                    buffer: result.buffer,
+                    filename: `${baseName}.jpg`,
+                    mimeType: result.mimeType,
+                });
+            } catch (error) {
+                URL.revokeObjectURL(objectUrl);
+                console.warn("[WeChat Format] 图片压缩失败:", error);
+                resolve(null);
+            }
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            console.warn("[WeChat Format] 图片解码失败:", sourceFilename);
+            resolve(null);
+        };
+        img.src = objectUrl;
+    });
+}
+
+function canvasToBlobBuffer(
+    canvas: HTMLCanvasElement,
+    mimeType: string,
+    quality: number
+): Promise<ArrayBuffer | null> {
+    return new Promise((resolve) => {
+        canvas.toBlob(
+            (blob) => {
+                if (!blob) {
+                    resolve(null);
+                    return;
+                }
+                blob.arrayBuffer().then(
+                    (buf) => resolve(buf),
+                    () => resolve(null)
+                );
+            },
+            mimeType,
+            quality
+        );
+    });
 }
 
 /**

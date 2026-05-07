@@ -1,0 +1,12 @@
+{
+  "name": "wechat-api-proxy",
+  "version": "1.0.0",
+  "description": "WeChat API proxy for fixed IP egress",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

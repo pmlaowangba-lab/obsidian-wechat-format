@@ -1,0 +1,27 @@
+{
+  "theme": "tech-blue",
+  "fontFamily": "yahei",
+  "customCss": "",
+  "imageHandling": "base64",
+  "codeTheme": "atom-one-dark",
+  "wechatAccounts": [
+    {
+      "id": "example-account-1",
+      "name": "Example Account 1",
+      "appId": "your-app-id",
+      "appSecret": "REDACTED"
+    },
+    {
+      "id": "example-account-2",
+      "name": "Example Account 2",
+      "appId": "your-app-id",
+      "appSecret": "REDACTED"
+    }
+  ],
+  "defaultAccountId": "example-account-1",
+  "xClientId": "",
+  "xClientSecret": "REDACTED",
+  "xTokens": null,
+  "xThreadMode": "auto",
+  "xMaxTweetLength": 280
+}

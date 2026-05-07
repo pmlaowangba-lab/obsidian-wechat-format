@@ -1,5 +1,9 @@
-/* WeChat Format Plugin - Obsidian UI Styles */
+/* WeChat Format Plugin - Premium Editor Theme */
+/* Matching WeChat Official Account Editor (微信公众号编辑器) */
 
+/* ═══════════════════════════════════════
+   Settings Panel
+   ═══════════════════════════════════════ */
 .wechat-format-settings .setting-item {
   border-bottom: 1px solid var(--background-modifier-border);
   padding: 12px 0;
@@ -10,4 +14,252 @@
   min-height: 100px;
   font-family: var(--font-monospace);
   font-size: 13px;
+}
+
+/* ═══════════════════════════════════════
+   Toolbar Container
+   ═══════════════════════════════════════ */
+.wechat-editor-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+/* ═══════════════════════════════════════
+   Row 1: Formatting Tools
+   ═══════════════════════════════════════ */
+.wet-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  align-items: center;
+  padding: 4px 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* ═══════════════════════════════════════
+   Row 2: Action Bar
+   ═══════════════════════════════════════ */
+.wet-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 8px;
+  background: #fafafa;
+}
+
+/* ═══════════════════════════════════════
+   Buttons (flat, icon-style)
+   ═══════════════════════════════════════ */
+.wet-btn {
+  font-size: 13px;
+  padding: 4px 7px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  min-width: 26px;
+  height: 28px;
+  text-align: center;
+  transition: all 0.12s ease;
+  line-height: 1;
+  color: #595959;
+  font-family: -apple-system, system-ui, "Segoe UI", sans-serif;
+}
+
+.wet-btn:hover {
+  background: #f0f0f0;
+  color: #262626;
+}
+
+.wet-btn:active {
+  transform: scale(0.95);
+  background: #e6e6e6;
+}
+
+/* B I U S 格式按钮 */
+.wet-btn-bold {
+  font-weight: 700;
+}
+
+.wet-btn-italic {
+  font-style: italic;
+}
+
+.wet-btn-underline {
+  text-decoration: underline;
+}
+
+.wet-btn-strike {
+  text-decoration: line-through;
+}
+
+/* 复制按钮 */
+.wet-btn-copy {
+  background: #f6ffed !important;
+  color: #52c41a !important;
+  font-weight: 500 !important;
+  padding: 4px 14px !important;
+  border-radius: 4px !important;
+  border: 1px solid #b7eb8f !important;
+  font-size: 12px !important;
+}
+
+.wet-btn-copy:hover {
+  background: #d9f7be !important;
+  border-color: #95de64 !important;
+}
+
+/* 发布按钮 */
+.wet-btn-publish {
+  background: #07c160 !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  padding: 4px 18px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  box-shadow: 0 2px 4px rgba(7, 193, 96, 0.25) !important;
+  letter-spacing: 0.5px;
+}
+
+.wet-btn-publish:hover {
+  background: #06ae56 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 8px rgba(7, 193, 96, 0.35) !important;
+}
+
+/* ═══════════════════════════════════════
+   Selects (flat, minimal)
+   ═══════════════════════════════════════ */
+.wet-select {
+  font-size: 12px;
+  padding: 2px 6px;
+  border: 1px solid #e8e8e8;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+  height: 28px;
+  color: #595959;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: -apple-system, system-ui, "Segoe UI", sans-serif;
+  min-width: 42px;
+}
+
+.wet-select:hover {
+  border-color: #40a9ff;
+}
+
+.wet-select:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.wet-select-wide {
+  max-width: 130px;
+  min-width: 80px;
+}
+
+/* ═══════════════════════════════════════
+   Separator
+   ═══════════════════════════════════════ */
+.wet-sep {
+  width: 1px;
+  height: 16px;
+  background: #e8e8e8;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════
+   Color Picker Wrappers
+   ═══════════════════════════════════════ */
+.wet-color-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.wet-color-btn {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  position: relative;
+  padding-bottom: 2px !important;
+}
+
+.wet-color-bar {
+  position: absolute;
+  bottom: 2px;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  border-radius: 1px;
+}
+
+.wet-hl-btn {
+  font-size: 12px !important;
+  background: #fdcb6e !important;
+  color: #333 !important;
+  border-radius: 3px !important;
+}
+
+.wet-color-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════
+   Action Group (right-aligned)
+   ═══════════════════════════════════════ */
+.wet-action-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
+}
+
+/* ═══════════════════════════════════════
+   Editor Content Area
+   ═══════════════════════════════════════ */
+.wechat-editor-content:focus {
+  outline: none;
+}
+
+.wechat-editor-content img {
+  cursor: pointer;
+  transition: outline 0.15s;
+}
+
+.wechat-editor-content img:hover {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════
+   Scrollbar
+   ═══════════════════════════════════════ */
+.wechat-editor-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.wechat-editor-wrapper::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 3px;
+}
+
+.wechat-editor-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #bfbfbf;
+}
+
+.wechat-editor-wrapper::-webkit-scrollbar-track {
+  background: transparent;
 }

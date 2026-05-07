@@ -183,17 +183,46 @@ export function generatePreviewHtml(
   <div class="toast" id="toast"></div>
 
   <script>
-    async function copyArticle() {
-      const content = document.getElementById('articleContent');
+    function setCopyButtonState(success) {
       const btn = document.getElementById('copyBtn');
       const btn2 = document.getElementById('copyBtn2');
+      const label = success ? '✅ 复制成功！' : '🎯 一键复制到公众号';
+      btn.innerHTML = label;
+      btn2.innerHTML = label;
+      btn.classList.toggle('success', success);
+      btn2.classList.toggle('success', success);
+    }
+
+    function copyByExecCommand(htmlContent, textContent) {
+      const onCopy = (event) => {
+        event.clipboardData.setData('text/html', htmlContent);
+        event.clipboardData.setData('text/plain', textContent);
+        event.preventDefault();
+      };
+
+      document.addEventListener('copy', onCopy);
+      const ok = document.execCommand('copy');
+      document.removeEventListener('copy', onCopy);
+
+      if (!ok) {
+        throw new Error('execCommand copy returned false');
+      }
+    }
+
+    async function copyArticle() {
+      const content = document.getElementById('articleContent');
+      const htmlContent = content.innerHTML;
+      const textContent = content.innerText;
       
       try {
         // 使用 ClipboardItem API 写入 text/html
-        const htmlContent = content.innerHTML;
         const blob = new Blob([htmlContent], { type: 'text/html' });
-        const textBlob = new Blob([content.innerText], { type: 'text/plain' });
+        const textBlob = new Blob([textContent], { type: 'text/plain' });
         
+        if (!navigator.clipboard || !window.ClipboardItem) {
+          throw new Error('Clipboard API unavailable');
+        }
+
         await navigator.clipboard.write([
           new ClipboardItem({
             'text/html': blob,
@@ -202,41 +231,23 @@ export function generatePreviewHtml(
         ]);
         
         // 成功反馈
-        btn.innerHTML = '✅ 复制成功！';
-        btn.classList.add('success');
-        btn2.innerHTML = '✅ 复制成功！';
-        btn2.classList.add('success');
+        setCopyButtonState(true);
         showToast('复制成功！直接粘贴到公众号编辑器即可 🎉');
         
         setTimeout(() => {
-          btn.innerHTML = '🎯 一键复制到公众号';
-          btn.classList.remove('success');
-          btn2.innerHTML = '🎯 一键复制到公众号';
-          btn2.classList.remove('success');
+          setCopyButtonState(false);
         }, 3000);
         
       } catch (err) {
         // 降级方案：使用 execCommand
         try {
-          const range = document.createRange();
-          range.selectNodeContents(content);
-          const selection = window.getSelection();
-          selection.removeAllRanges();
-          selection.addRange(range);
-          document.execCommand('copy');
-          selection.removeAllRanges();
+          copyByExecCommand(htmlContent, textContent);
           
-          btn.innerHTML = '✅ 复制成功！';
-          btn.classList.add('success');
-          btn2.innerHTML = '✅ 复制成功！';
-          btn2.classList.add('success');
+          setCopyButtonState(true);
           showToast('复制成功！直接粘贴到公众号编辑器即可 🎉');
           
           setTimeout(() => {
-            btn.innerHTML = '🎯 一键复制到公众号';
-            btn.classList.remove('success');
-            btn2.innerHTML = '🎯 一键复制到公众号';
-            btn2.classList.remove('success');
+            setCopyButtonState(false);
           }, 3000);
         } catch (e) {
           showToast('复制失败，请手动选择内容复制');
