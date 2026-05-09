@@ -1,0 +1,66 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy.yml'
+      - 'proxy/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 14.103.38.108 >> ~/.ssh/known_hosts
+
+      - name: Sync proxy to server
+        run: |
+          ssh root@14.103.38.108 "mkdir -p /root/apps/wx-proxy"
+          rsync -avz --delete \
+            --exclude='.git/' \
+            --exclude='node_modules/' \
+            --exclude='logs/' \
+            --exclude='.env' \
+            proxy/ root@14.103.38.108:/root/apps/wx-proxy/
+
+      - name: Install deps & reload PM2
+        env:
+          WX_PROXY_PORT: "8080"
+          WECHAT_PROXY_KEY: ${{ secrets.WECHAT_PROXY_KEY }}
+        run: |
+          ssh root@14.103.38.108 "WX_PROXY_PORT='${WX_PROXY_PORT}' WECHAT_PROXY_KEY='${WECHAT_PROXY_KEY}' bash -s" << 'EOF'
+          set -euo pipefail
+          cd /root/apps/wx-proxy
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm ci --omit=dev
+          else
+            npm install --omit=dev
+          fi
+          mkdir -p logs
+
+          PROXY_KEY="${WECHAT_PROXY_KEY:-}"
+          if [ -z "$PROXY_KEY" ] && pm2 describe wx-proxy > /dev/null 2>&1; then
+            PROXY_KEY="$(pm2 jlist | node -e 'const fs=require("fs"); const list=JSON.parse(fs.readFileSync(0,"utf8")); const app=list.find(a=>a.name==="wx-proxy"); process.stdout.write(app?.pm2_env?.PROXY_KEY || app?.pm2_env?.env?.PROXY_KEY || "");')"
+          fi
+
+          if [ -z "$PROXY_KEY" ]; then
+            echo "Missing WECHAT_PROXY_KEY secret and no existing wx-proxy PROXY_KEY on server." >&2
+            exit 1
+          fi
+
+          if pm2 describe wx-proxy > /dev/null 2>&1; then
+            PORT="$WX_PROXY_PORT" PROXY_KEY="$PROXY_KEY" pm2 reload wx-proxy --update-env
+          else
+            PORT="$WX_PROXY_PORT" PROXY_KEY="$PROXY_KEY" pm2 start index.js --name wx-proxy \
+              --time --log logs/out.log --error logs/error.log
+          fi
+          pm2 save
+          EOF
